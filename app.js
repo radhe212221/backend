@@ -13,7 +13,7 @@ const url =
 const secret = "radhe@212221";
 
 // connecttion to db in mongo
-mongoose.connect(url, {});
+mongoose.connect(url);
 
 const usersModel = new mongoose.model("users", {
   name: String,
@@ -42,8 +42,35 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // routes starts
 app.post("/login", (req, res) => {
   let { email, password } = req.body;
+  usersModel
+    .find({ email, password })
+    .then((d) => {
+      jwt.sign({ id: d?._id }, secret, (err, token) => {
+        if (err) return res.json({ status: false, data: null, error: err });
+        return res.json({ status: true, data: { ...d, token }, error: null });
+      });
+    })
+    .catch((err) => res.json({ status: false, data: null, error: err }));
 });
-app.post("/signup", (req, res) => {});
+app.post("/signup", (req, res) => {
+  let { email } = req.body;
+  usersModel
+    .find({ email })
+    .then((d) => {
+      if (d)
+        return res.json({
+          status: false,
+          data: null,
+          error: "user already exists",
+        });
+
+      return usersModel
+        .create(req.body)
+        .then((data) => res.json({ status: true, data, error: null }))
+        .catch((err) => res.json({ status: false, data: null, error: err }));
+    })
+    .catch((err) => res.json({ status: false, data: null, error: err }));
+});
 
 app.get("/", protectedMiddleware, (req, res) => {});
 app.post("/", protectedMiddleware, (req, res) => {});
