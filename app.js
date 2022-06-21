@@ -22,7 +22,8 @@ const usersModel = new mongoose.model("users", {
 });
 const todosModel = new mongoose.model("todos", {
   title: String,
-  status: Boolean,
+  status: String,
+  uid: String,
 });
 // custom functions
 function protectedMiddleware(req, res, next) {
@@ -32,13 +33,13 @@ function protectedMiddleware(req, res, next) {
   let token = req?.headers?.authorization?.split(" ")[1];
   jwt.verify(token, secret, (err, data) => {
     if (data) {
-      resp = data;
+      // resp = data;
+      req.uid = data?.id;
       status = true;
     }
   });
   if (status) {
-    // next();
-    res.json({ msg: "good user", data: resp });
+    next();
   } else {
     res.json({ msg: "not authorized", status: false, data: null });
   }
@@ -57,7 +58,11 @@ app.post("/login", (req, res) => {
     .then((d) => {
       jwt.sign({ id: d?._id }, secret, (err, token) => {
         if (err) return res.json({ status: false, data: null, error: err });
-        return res.json({ status: true, data: { name:d?.name, token }, error: null });
+        return res.json({
+          status: true,
+          data: { name: d?.name, token },
+          error: null,
+        });
       });
     })
     .catch((err) => res.json({ status: false, data: null, error: err }));
@@ -82,9 +87,30 @@ app.post("/signup", (req, res) => {
     .catch((err) => res.json({ status: false, data: null, error: err }));
 });
 
-app.get("/", protectedMiddleware, (req, res) => {});
-app.post("/", protectedMiddleware, (req, res) => {});
-app.patch("/:id", protectedMiddleware, (req, res) => {});
-app.delete("/:id", protectedMiddleware, (req, res) => {});
+app.get("/", protectedMiddleware, (req, res) => {
+  todosModel
+    .find({ uid: req.uid })
+    .then((d) => res.json({ status: true, data: d, error: null }))
+    .catch((error) => res.json({ status: false, data: null, error }));
+});
+app.post("/", protectedMiddleware, (req, res) => {
+  let data = { ...req.body, uid: req.uid };
+  todosModel
+    .create(data)
+    .then((d) => res.json({ status: true, data: d, error: null }))
+    .catch((error) => res.json({ status: false, data: null, error }));
+});
+app.patch("/:id", protectedMiddleware, (req, res) => {
+  // todosModel.find({uid:req.uid})
+  // .then(d=>res.json({status:true,data:d,error:null}))
+  // .catch(error=>res.json({status:false,data:null,error}))
+  res.json(req.body);
+});
+app.delete("/:id", protectedMiddleware, (req, res) => {
+  todosModel
+    .findByIdAndDelete(req.params.id)
+    .then((d) => res.json({ status: true, data: d, error: null }))
+    .catch((error) => res.json({ status: false, data: null, error }));
+});
 
 app.listen(4000, () => console.log("server started"));
