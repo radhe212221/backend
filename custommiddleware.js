@@ -1,6 +1,6 @@
 function custommiddleware(req,res,next)
 {
-    console.clear()
+    // console.clear()
     console.log(req.url,req.method)
     next()
 }

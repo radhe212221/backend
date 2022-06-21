@@ -26,9 +26,19 @@ const todosModel = new mongoose.model("todos", {
 });
 // custom functions
 function protectedMiddleware(req, res, next) {
-  console.log(req.headers.authorization);
-  if (true) {
-    next();
+  // console.log(req.headers.authorization);
+  let status = false;
+  let resp = null;
+  let token = req?.headers?.authorization?.split(" ")[1];
+  jwt.verify(token, secret, (err, data) => {
+    if (data) {
+      resp = data;
+      status = true;
+    }
+  });
+  if (status) {
+    // next();
+    res.json({ msg: "good user", data: resp });
   } else {
     res.json({ msg: "not authorized", status: false, data: null });
   }
@@ -43,11 +53,11 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.post("/login", (req, res) => {
   let { email, password } = req.body;
   usersModel
-    .find({ email, password })
+    .findOne({ email, password })
     .then((d) => {
       jwt.sign({ id: d?._id }, secret, (err, token) => {
         if (err) return res.json({ status: false, data: null, error: err });
-        return res.json({ status: true, data: { ...d, token }, error: null });
+        return res.json({ status: true, data: { name:d?.name, token }, error: null });
       });
     })
     .catch((err) => res.json({ status: false, data: null, error: err }));
@@ -55,7 +65,7 @@ app.post("/login", (req, res) => {
 app.post("/signup", (req, res) => {
   let { email } = req.body;
   usersModel
-    .find({ email })
+    .findOne({ email })
     .then((d) => {
       if (d)
         return res.json({
@@ -76,3 +86,5 @@ app.get("/", protectedMiddleware, (req, res) => {});
 app.post("/", protectedMiddleware, (req, res) => {});
 app.patch("/:id", protectedMiddleware, (req, res) => {});
 app.delete("/:id", protectedMiddleware, (req, res) => {});
+
+app.listen(4000, () => console.log("server started"));
